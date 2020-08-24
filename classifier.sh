@@ -1,5 +1,5 @@
 # SINGLE TRAINING
-python classifier.py  --n_train=10e3  --n_valid=15e3  --batch_size=5e3  --n_epochs=100  --n_classes=6           \
+python classifier.py  --n_train=10e6  --n_valid=15e6  --batch_size=5e3  --n_epochs=100  --n_classes=6           \
                       --n_tracks=5    --output_dir=outputs/6c_10m \
 
 
