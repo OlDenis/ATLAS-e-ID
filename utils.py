@@ -347,16 +347,20 @@ def match_distributions(sample, labels, target_sample, target_labels):
 
 def get_dataset(host_name='lps', node_dir='', eta_region=''):
     if 'lps'    in host_name                   : node_dir = '/opt/tmp/godin/e-ID_data/presamples'
-    if 'beluga' in host_name and node_dir == '': node_dir = '/project/def-arguinj/shared/e-ID_data/2020-10-30'
-    if eta_region in ['0.0-1.3', '0.0-1.3_old', '1.3-1.6', '1.6-2.5', '0.0-2.5']:
-        folder = node_dir+'/'+eta_region
-        data_files = sorted([folder+'/'+h5_file for h5_file in os.listdir(folder) if 'e-ID_' in h5_file])
-    else:
-        barrel_dir, midgap_dir, endcap_dir = [node_dir+'/'+folder for folder in ['0.0-1.3', '1.3-1.6', '1.6-2.5']]
-        barrel_files = sorted([barrel_dir+'/'+h5_file for h5_file in os.listdir(barrel_dir) if 'e-ID_' in h5_file])
-        midgap_files = sorted([midgap_dir+'/'+h5_file for h5_file in os.listdir(midgap_dir) if 'e-ID_' in h5_file])
-        endcap_files = sorted([endcap_dir+'/'+h5_file for h5_file in os.listdir(barrel_dir) if 'e-ID_' in h5_file])
-        data_files = [h5_file for group in zip(barrel_files, midgap_files, endcap_files) for h5_file in group]
+    #elif 'beluga' in host_name and node_dir == '': node_dir = '/project/def-arguinj/shared/e-ID_data/2020-10-30'
+    elif 'beluga' in host_name and node_dir == '': node_dir = '/project/def-arguinj/shared/LightFlavor_Background_CR'
+#    if eta_region in ['0.0-1.3', '0.0-1.3_old', '1.3-1.6', '1.6-2.5', '0.0-2.5']:
+#        folder = node_dir+'/'+eta_region
+#        data_files = sorted([folder+'/'+h5_file for h5_file in os.listdir(folder) if 'e-ID_' in h5_file])
+#    else:
+#        barrel_dir, midgap_dir, endcap_dir = [node_dir+'/'+folder for folder in ['0.0-1.3', '1.3-1.6', '1.6-2.5']]
+#        barrel_files = sorted([barrel_dir+'/'+h5_file for h5_file in os.listdir(barrel_dir) if 'e-ID_' in h5_file])
+#        midgap_files = sorted([midgap_dir+'/'+h5_file for h5_file in os.listdir(midgap_dir) if 'e-ID_' in h5_file])
+#        endcap_files = sorted([endcap_dir+'/'+h5_file for h5_file in os.listdir(barrel_dir) if 'e-ID_' in h5_file])
+#        data_files = [h5_file for group in zip(barrel_files, midgap_files, endcap_files) for h5_file in group]
+    folder = node_dir
+    print('LightFlavor_Background_CR', os.listdir(folder))
+    data_files = sorted([folder+'/'+h5_file for h5_file in os.listdir(folder) if '.h5' in h5_file])
     #for key, val in h5py.File(data_files[0], 'r').items(): print(key, val.shape)
     return data_files
 
@@ -441,7 +445,7 @@ def make_labels(sample, n_classes, match_to_vertex=False):
     firstEgMotherPdgId = 'p_firstEgMotherPdgId'
     charge             = 'p_charge'
     vertexIndex        = 'p_vertexIndex'
-    labels = np.full(sample[iffTruth].shape, -1)
+    labels = np.full(sample[iffTruth].shape, 0)
     labels[(sample[iffTruth] ==  2) & (sample[firstEgMotherPdgId]*sample[charge] < 0)] = 0
     labels[(sample[iffTruth] ==  2) & (sample[firstEgMotherPdgId]*sample[charge] > 0)] = 1
     labels[ sample[iffTruth] ==  3                                                   ] = 1
@@ -454,8 +458,7 @@ def make_labels(sample, n_classes, match_to_vertex=False):
     if n_classes == 2: labels[labels >= 2] = 1
     if n_classes == 5: labels[labels >= 1] = labels[labels >= 1] -1 #signal=electron+chargeflip
     if match_to_vertex: labels[sample[vertexIndex] == -999] = -1
-    return np.int8(labels)
-
+    return np.full(sample[iffTruth].shape, 0)
 
 def batch_idx(data_files, batch_size, interval, weights=None, shuffle='OFF'):
     def return_idx(n_e, cum_batches, batch_size, index):

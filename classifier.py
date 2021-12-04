@@ -180,10 +180,16 @@ if args.t_scaling and os.path.isfile(args.t_scaler_in):
     t_scaler = pickle.load(open(args.t_scaler_in, 'rb'))
 else: t_scaler = None
 print('LOADING', np.diff(args.n_valid)[0], 'VALIDATION SAMPLES')
-inputs = {'scalars':scalars, 'images':[], 'others':others} if args.generator == 'ON' else input_data
-valid_sample, valid_labels, _ = merge_samples(data_files, args.n_valid, inputs, args.n_tracks, args.n_classes,
+inputs = {'scalars':scalars, 'images':images, 'others':others} if args.generator == 'ON' else input_data
+#valid_sample, valid_labels, _ = merge_samples(data_files, args.n_valid, inputs, args.n_tracks, args.n_classes,
+#           args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
+jf17_sample, jf17_labels, _ = merge_samples(data_files[1:], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
-#sample_analysis(valid_sample, valid_labels, scalars, scaler, args.output_dir); sys.exit()
+sample_analysis(jf17_sample, jf17_labels, scalars, scaler, args.output_dir + '/jf17_images') 
+data17_sample, data17_labels, _ = merge_samples(data_files[:1], args.n_valid, inputs, args.n_tracks, args.n_classes,
+           args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
+print("data17_labels",data17_labels)
+sample_analysis(data17_sample, data17_labels, scalars, scaler, args.output_dir+'/data17_images'); sys.exit() 
 
 
 # EVALUATING FEATURES CORRELATIONS

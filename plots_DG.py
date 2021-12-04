@@ -443,7 +443,7 @@ def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', 
             plot_image(100*image_dict[(e_class,key)], n_classes, e_class, layers, key, 100*vmax, soft)
     wspace = -0.1 if n_classes == 2 else 0.2
     fig.subplots_adjust(left=0.05, top=0.95, bottom=0.05, right=0.95, hspace=0.6, wspace=wspace)
-    fig.savefig(file_name); sys.exit()
+    fig.savefig(file_name)
 
 
 def plot_image(image, n_classes, e_class, layers, key, vmax, soft=True):

@@ -17,6 +17,7 @@ parser.add_argument( '--sampling'   , default = 'ON'              )
 parser.add_argument( '--merging'    , default = 'OFF'             )
 parser.add_argument( '--mixing'     , default = 'OFF'             )
 parser.add_argument( '--eta_region' , default = ''                )
+parser.add_argument( '--data_path'  , default = "../hdf5/Data/electron/Allyear")
 args = parser.parse_args()
 
 
@@ -28,14 +29,16 @@ if args.mixing == 'ON':
 
 
 # DATASET
-data_path  = '/lcg/storage19/atlas/godin/e-ID_data/2020-10-30'
-if args.eta_region != '': data_path += '/'+args.eta_region
-else                    : sys.exit()
+data_path  = args.data_path
+#if args.eta_region != '': data_path += '/'+args.eta_region
+#else                    : sys.exit()
 if not os.path.isdir(data_path+'/'+'output'): os.mkdir(data_path+'/'+'output')
 output_dir = data_path+'/'+'output'
 data_files = [data_path+'/'+h5_file for h5_file in os.listdir(data_path) if '.h5' in h5_file]
 data_files = sorted(data_files)[0:max(1,args.n_files) if args.n_files != None else len(data_files)]
 
+print("Input path : ", data_path)
+print("Input files: ", data_files)
 
 # MERGING FILES / NO PRESAMPLING
 if args.sampling == 'OFF':
