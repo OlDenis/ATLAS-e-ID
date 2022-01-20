@@ -96,7 +96,7 @@ This is a TensorFlow framework for the identification of ATLAS electrons by usin
    ```
    Once the ressources are ready to use, activate the virtual environment of TensorFlow2.1.0+Python3.6.8 Singularity image
    ```
-   module load singularity/3.5
+   module load singularity/3.8
    singularity shell --bind $YOUR_CODE_PATH $YOUR_SING_IMAGE_PATH/tf-2.1.0-gpu-py3_sing-3.5.sif
    ```
 
