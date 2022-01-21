@@ -7,7 +7,7 @@ from   tabulate  import tabulate
 from   itertools import accumulate
 from   utils     import get_dataset, validation, make_sample, merge_samples, sample_composition
 from   utils     import compo_matrix, get_sample_weights, get_class_weight, gen_weights, sample_weights
-from   utils     import cross_valid, valid_results, sample_analysis, sample_histograms, Batch_Generator
+from   utils     import cross_valid, valid_results, sample_histograms, Batch_Generator
 from   utils     import feature_removal, feature_ranking, fit_scaler, apply_scaler, fit_t_scaler, apply_t_scaler
 from   models    import callback, create_model
 #os.system('nvidia-modprobe -u -c=0') # for atlas15
@@ -46,6 +46,7 @@ parser.add_argument( '--generator'      , default = 'OFF'               )
 parser.add_argument( '--sep_bkg'        , default = 'OFF'               )
 parser.add_argument( '--metrics'        , default = 'val_accuracy'      )
 parser.add_argument( '--eta_region'     , default = '0.0-2.5'           )
+parser.add_argument( '--pt_region'      , default = '5-200'           )
 parser.add_argument( '--output_dir'     , default = 'outputs'           )
 parser.add_argument( '--model_in'       , default = ''                  )
 parser.add_argument( '--model_out'      , default = 'model.h5'          )
@@ -59,6 +60,17 @@ parser.add_argument( '--runDiffPlots'   , default = 0, type = int       )
 parser.add_argument( '--feature_removal', default = 'OFF'               )
 parser.add_argument( '--correlations'   , default = 'OFF'               )
 args = parser.parse_args()
+
+def mean_images(sample, labels, scalars, scaler_file, output_dir,dataset_name, pt_region, eta_region):
+    from plots_DG import cal_images
+    if eta_region == '0.0-1.37':
+        layers  = [ 'em_barrel_Lr0',   'em_barrel_Lr1',   'em_barrel_Lr2',   'em_barrel_Lr3',
+                    'tile_barrel_Lr1', 'tile_barrel_Lr2', 'tile_barrel_Lr3']
+    if eta_region == '1.6-2.5':
+        layers = ['tile_gap_Lr1','em_endcap_Lr0',   'em_endcap_Lr1',   'em_endcap_Lr2',   'em_endcap_Lr3',
+                  'lar_endcap_Lr0',  'lar_endcap_Lr1',  'lar_endcap_Lr2',  'lar_endcap_Lr3']
+    suffix = "_{}_{}GeV_{}".format(dataset_name, pt_region, eta_region,)
+    cal_images(sample, labels, layers, output_dir, mode='mean', soft=True)
 
 
 # VERIFYING ARGUMENTS
@@ -185,8 +197,8 @@ inputs = {'scalars':scalars, 'images':images, 'others':others} if args.generator
 #           args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
 jf17_sample, jf17_labels, _ = merge_samples(data_files[1:], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
-sample_analysis(jf17_sample, jf17_labels, scalars, scaler, args.output_dir + '/jf17_images')
+sample_analysis(jf17_sample, jf17_labels, scalars, scaler, args.output_dir + '/jf17_images', args.pt_region, args.eta_region)
 data17_sample, data17_labels, _ = merge_samples(data_files[:1], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
 print("data17_labels",data17_labels)
-sample_analysis(data17_sample, data17_labels, scalars, scaler, args.output_dir+'/data17_images')
+sample_analysis(data17_sample, data17_labels, scalars, scaler, args.output_dir+'/data17_images', args.pt_region, args.eta_region)
