@@ -70,7 +70,7 @@ def mean_images(sample, labels, scalars, scaler_file, output_dir,dataset_name, p
         layers = ['tile_gap_Lr1','em_endcap_Lr0',   'em_endcap_Lr1',   'em_endcap_Lr2',   'em_endcap_Lr3',
                   'lar_endcap_Lr0',  'lar_endcap_Lr1',  'lar_endcap_Lr2',  'lar_endcap_Lr3']
     suffix = "_{}_{}GeV_{}".format(dataset_name, pt_region, eta_region,)
-    cal_images(sample, labels, layers, output_dir, mode='mean', soft=True)
+    cal_images(sample, labels, layers, output_dir, mode='mean', soft=True, suffix=suffix)
 
 
 # VERIFYING ARGUMENTS
@@ -197,8 +197,8 @@ inputs = {'scalars':scalars, 'images':images, 'others':others} if args.generator
 #           args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
 jf17_sample, jf17_labels, _ = merge_samples(data_files[1:], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
-sample_analysis(jf17_sample, jf17_labels, scalars, scaler, args.output_dir + '/jf17_images', args.pt_region, args.eta_region)
+mean_images(jf17_sample, jf17_labels, scalars, scaler, args.output_dir, 'jf17', args.pt_region, args.eta_region)
 data17_sample, data17_labels, _ = merge_samples(data_files[:1], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
 print("data17_labels",data17_labels)
-sample_analysis(data17_sample, data17_labels, scalars, scaler, args.output_dir+'/data17_images', args.pt_region, args.eta_region)
+mean_images(data17_sample, data17_labels, scalars, scaler, args.output_dir,'data17', args.pt_region, args.eta_region)

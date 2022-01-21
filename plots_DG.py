@@ -407,7 +407,7 @@ def combine_ROC_curves(output_dir, cuts=''):
     '''
 
 
-def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', soft=True):
+def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', soft=True, suffix=''):
     import multiprocessing as mp
     def get_image(sample, labels, e_class, key, mode, image_dict):
         start_time = time.time()
@@ -428,7 +428,7 @@ def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', 
     print('PLOTTING CALORIMETER IMAGES (mode='+mode+', scale='+str(scale)+')')
     for job in processes: job.start()
     for job in processes: job.join()
-    file_name = output_dir+'/cal_images.png'
+    file_name = '{}/cal_images{}.png'.format(output_dir, suffix)
     print('SAVING IMAGES TO:', file_name, '\n')
     fig = plt.figure(figsize=(7,14)) if n_classes == 2 else plt.figure(figsize=(18,14))
     for e_class in np.arange(n_classes):
