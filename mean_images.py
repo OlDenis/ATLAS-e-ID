@@ -62,7 +62,6 @@ parser.add_argument( '--correlations'   , default = 'OFF'               )
 args = parser.parse_args()
 
 def mean_images(sample, labels, scalars, scaler_file, output_dir,dataset_name, pt_region, eta_region):
-    from plots_DG import cal_images
     if eta_region == '0.0-1.37':
         layers  = [ 'em_barrel_Lr0',   'em_barrel_Lr1',   'em_barrel_Lr2',   'em_barrel_Lr3',
                     'tile_barrel_Lr1', 'tile_barrel_Lr2', 'tile_barrel_Lr3']
@@ -72,6 +71,71 @@ def mean_images(sample, labels, scalars, scaler_file, output_dir,dataset_name, p
     suffix = "_{}_{}GeV_{}".format(dataset_name, pt_region, eta_region,)
     cal_images(sample, labels, layers, output_dir, mode='mean', soft=True, suffix=suffix)
 
+def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', soft=True, suffix=''):
+    import multiprocessing as mp
+    def get_image(sample, labels, e_class, key, mode, image_dict):
+        start_time = time.time()
+        if mode == 'random':
+            for counter in np.arange(10000):
+                image = abs(sample[key][np.random.choice(np.where(labels==e_class)[0])])
+                if np.max(image) !=0: break
+        if mode == 'mean': image = np.mean(sample[key][labels==e_class], axis=0)
+        if mode == 'std' : image = np.std (sample[key][labels==e_class], axis=0)
+        print('plotting layer '+format(key,length+'s')+' for class '+str(e_class), end='', flush=True)
+        print(' (', '\b'+format(time.time() - start_time, '2.1f'), '\b'+' s)')
+        image_dict[(e_class,key)] = image
+    layers    = [layer for layer in layers if layer in sample.keys()]
+    n_classes = max(labels)+1; length = str(max(len(n) for n in layers))
+    manager   =  mp.Manager(); image_dict = manager.dict()
+    processes = [mp.Process(target=get_image, args=(sample, labels, e_class, key, mode, image_dict))
+                 for e_class in np.arange(n_classes) for key in layers]
+    print('PLOTTING CALORIMETER IMAGES (mode='+mode+', scale='+str(scale)+')')
+    for job in processes: job.start()
+    for job in processes: job.join()
+    file_name = '{}/cal_images{}.png'.format(output_dir, suffix)
+    print('SAVING IMAGES TO:', file_name, '\n')
+    fig = plt.figure(figsize=(7,14)) if n_classes == 2 else plt.figure(figsize=(18,14))
+    for e_class in np.arange(n_classes):
+        if scale == 'class': vmax = max([np.max(image_dict[(e_class,key)]) for key in layers])
+        for key in layers:
+            image_dict[(e_class,key)] -= min(0,np.min(image_dict[(e_class,key)]))
+            #image_dict[(e_class,key)] = abs(image_dict[(e_class,key)])
+            if scale == 'layer':
+                vmax = max([np.max(image_dict[(e_class,key)]) for e_class in np.arange(n_classes)])
+            if scale == 'free':
+                vmax = np.max(image_dict[(e_class,key)])
+            print("image dict type: ",type(image_dict[(e_class,key)]))
+            plot_image(100*image_dict[(e_class,key)], n_classes, e_class, layers, key, 100*vmax, soft)
+    wspace = -0.1 if n_classes == 2 else 0.2
+    #fig.subplots_adjust(left=0.05, top=0.95, bottom=0.05, right=0.95, hspace=0.6, wspace=wspace)
+    fig.savefig(file_name)
+
+def plot_image(image, n_classes, e_class, layers, key, vmax, soft=True):
+    class_dict = {0:'iso electron',  1:'charge flip' , 2:'photon conversion', 3:'b/c hadron',
+                  4:'light flavor ($\gamma$/e$^\pm$)', 5:'light flavor (hadron)'}
+    layer_dict = {'em_barrel_Lr0'     :'presampler'            , 'em_barrel_Lr1'  :'EM cal $1^{st}$ layer' ,
+                  'em_barrel_Lr1_fine':'EM cal $1^{st}$ layer' , 'em_barrel_Lr2'  :'EM cal $2^{nd}$ layer' ,
+                  'em_barrel_Lr3'     :'EM cal $3^{rd}$ layer' , 'tile_barrel_Lr1':'had cal $1^{st}$ layer',
+                  'tile_barrel_Lr2'   :'had cal $2^{nd}$ layer', 'tile_barrel_Lr3':'had cal $3^{rd}$ layer'}
+    if n_classes == 2: class_dict[1] = 'background'
+    e_layer  = layers.index(key)
+    n_layers = len(layers)
+    plot_idx = n_classes*e_layer + e_class+1
+    #plt.subplot(n_layers, n_classes, plot_idx)
+    #title   = class_dict[e_class]+'\n('+layer_dict[key]+')'
+    #title   = layer_dict[key]+'\n('+class_dict[e_class]+')'
+    title   = class_dict[e_class]+'\n('+str(key)+')'
+    limits  = [-0.13499031, 0.1349903, -0.088, 0.088]
+    x_label = '$\phi$'                             if e_layer == n_layers-1 else ''
+    x_ticks = [limits[0],-0.05,0.05,limits[1]]     if e_layer == n_layers-1 else []
+    y_label = '$\eta$'                             if e_class == 0          else ''
+    y_ticks = [limits[2],-0.05,0.0,0.05,limits[3]] if e_class == 0          else []
+    plt.title(title,fontweight='normal', fontsize=12)
+    plt.xlabel(x_label,fontsize=15); plt.xticks(x_ticks)
+    plt.ylabel(y_label,fontsize=15); plt.yticks(y_ticks)
+    plt.imshow(np.float32(image), cmap='Reds', interpolation='bilinear' if soft else None,
+               extent=limits, vmax=1 if np.max(image)==0 else vmax) #norm=colors.LogNorm(1e-3,vmax))
+    plt.colorbar(pad=0.02)
 
 # VERIFYING ARGUMENTS
 for key in ['n_train', 'n_eval', 'n_valid', 'batch_size']: vars(args)[key] = int(vars(args)[key])

@@ -453,7 +453,7 @@ def plot_image(image, n_classes, e_class, layers, key, vmax, soft=True):
                   'em_barrel_Lr1_fine':'EM cal $1^{st}$ layer' , 'em_barrel_Lr2'  :'EM cal $2^{nd}$ layer' ,
                   'em_barrel_Lr3'     :'EM cal $3^{rd}$ layer' , 'tile_barrel_Lr1':'had cal $1^{st}$ layer',
                   'tile_barrel_Lr2'   :'had cal $2^{nd}$ layer', 'tile_barrel_Lr3':'had cal $3^{rd}$ layer'}
-    if n_classes ==2: class_dict[1] = 'background'
+    if n_classes == 2: class_dict[1] = 'background'
     e_layer  = layers.index(key)
     n_layers = len(layers)
     plot_idx = n_classes*e_layer + e_class+1
