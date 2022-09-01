@@ -1010,22 +1010,6 @@ def print_channels(sample, labels, col=2, reverse=True):
 
 
 def sample_analysis(sample, labels, scalars, scaler_file, output_dir, pt='', eta='', name=''):
-    #for key in sample: print(key, sample[key].shape); sys.exit()
-    #verify_sample(sample); sys.exit()
-    #sample_histograms(sample, labels, sample, labels, None, output_dir)#; sys.exit()
-    # MC CHANNELS
-    #from utils import print_channels
-    #print_channels(sample, labels)
-    # DISTRIBUTION HEATMAPS
-    #from plots_DG import plot_heatmaps
-    #plot_heatmaps(sample, labels, output_dir); sys.exit()
-    # CALORIMETER IMAGES
-    from plots_DG import cal_images
-    layers  = [ 'em_barrel_Lr0',   'em_barrel_Lr1',   'em_barrel_Lr2',   'em_barrel_Lr3',
-               #                    'tile_gap_Lr1'                                      ,
-               #'em_endcap_Lr0',   'em_endcap_Lr1',   'em_endcap_Lr2',   'em_endcap_Lr3',
-               #'lar_endcap_Lr0',  'lar_endcap_Lr1',  'lar_endcap_Lr2',  'lar_endcap_Lr3',
-                                 'tile_barrel_Lr1', 'tile_barrel_Lr2', 'tile_barrel_Lr3']
     suffix = "_{}_{}_eta_{}_pt".format(name, eta, pt)
     cal_images(sample, labels, layers, output_dir, mode='mean', soft=True, suffix = suffix)
     # TRACKS DISTRIBUTIONS

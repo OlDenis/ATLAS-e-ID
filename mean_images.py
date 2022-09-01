@@ -7,7 +7,7 @@ from   tabulate  import tabulate
 from   itertools import accumulate
 from   utils     import get_dataset, validation, make_sample, merge_samples, sample_composition
 from   utils     import compo_matrix, get_sample_weights, get_class_weight, gen_weights, sample_weights
-from   utils     import cross_valid, valid_results, sample_analysis, sample_histograms, Batch_Generator
+from   utils     import cross_valid, valid_results, sample_histograms, Batch_Generator
 from   utils     import feature_removal, feature_ranking, fit_scaler, apply_scaler, fit_t_scaler, apply_t_scaler
 from   models    import callback, create_model
 #os.system('nvidia-modprobe -u -c=0') # for atlas15
@@ -46,6 +46,7 @@ parser.add_argument( '--generator'      , default = 'OFF'               )
 parser.add_argument( '--sep_bkg'        , default = 'OFF'               )
 parser.add_argument( '--metrics'        , default = 'val_accuracy'      )
 parser.add_argument( '--eta_region'     , default = '0.0-2.5'           )
+parser.add_argument( '--pt_region'      , default = '5-200'           )
 parser.add_argument( '--output_dir'     , default = 'outputs'           )
 parser.add_argument( '--model_in'       , default = ''                  )
 parser.add_argument( '--model_out'      , default = 'model.h5'          )
@@ -60,6 +61,81 @@ parser.add_argument( '--feature_removal', default = 'OFF'               )
 parser.add_argument( '--correlations'   , default = 'OFF'               )
 args = parser.parse_args()
 
+def mean_images(sample, labels, scalars, scaler_file, output_dir,dataset_name, pt_region, eta_region):
+    if eta_region == '0.0-1.37':
+        layers  = [ 'em_barrel_Lr0',   'em_barrel_Lr1',   'em_barrel_Lr2',   'em_barrel_Lr3',
+                    'tile_barrel_Lr1', 'tile_barrel_Lr2', 'tile_barrel_Lr3']
+    if eta_region == '1.6-2.5':
+        layers = ['tile_gap_Lr1','em_endcap_Lr0',   'em_endcap_Lr1',   'em_endcap_Lr2',   'em_endcap_Lr3',
+                  'lar_endcap_Lr0',  'lar_endcap_Lr1',  'lar_endcap_Lr2',  'lar_endcap_Lr3']
+    suffix = "_{}_{}GeV_{}".format(dataset_name, pt_region, eta_region,)
+    cal_images(sample, labels, layers, output_dir, mode='mean', soft=True, suffix=suffix)
+
+def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', soft=True, suffix=''):
+    import multiprocessing as mp
+    def get_image(sample, labels, e_class, key, mode, image_dict):
+        start_time = time.time()
+        if mode == 'random':
+            for counter in np.arange(10000):
+                image = abs(sample[key][np.random.choice(np.where(labels==e_class)[0])])
+                if np.max(image) !=0: break
+        if mode == 'mean': image = np.mean(sample[key][labels==e_class], axis=0)
+        if mode == 'std' : image = np.std (sample[key][labels==e_class], axis=0)
+        print('plotting layer '+format(key,length+'s')+' for class '+str(e_class), end='', flush=True)
+        print(' (', '\b'+format(time.time() - start_time, '2.1f'), '\b'+' s)')
+        image_dict[(e_class,key)] = image
+    layers    = [layer for layer in layers if layer in sample.keys()]
+    n_classes = max(labels)+1; length = str(max(len(n) for n in layers))
+    manager   =  mp.Manager(); image_dict = manager.dict()
+    processes = [mp.Process(target=get_image, args=(sample, labels, e_class, key, mode, image_dict))
+                 for e_class in np.arange(n_classes) for key in layers]
+    print('PLOTTING CALORIMETER IMAGES (mode='+mode+', scale='+str(scale)+')')
+    for job in processes: job.start()
+    for job in processes: job.join()
+    file_name = '{}/cal_images{}.png'.format(output_dir, suffix)
+    print('SAVING IMAGES TO:', file_name, '\n')
+    fig = plt.figure(figsize=(7,14)) if n_classes == 2 else plt.figure(figsize=(18,14))
+    for e_class in np.arange(n_classes):
+        if scale == 'class': vmax = max([np.max(image_dict[(e_class,key)]) for key in layers])
+        for key in layers:
+            image_dict[(e_class,key)] -= min(0,np.min(image_dict[(e_class,key)]))
+            #image_dict[(e_class,key)] = abs(image_dict[(e_class,key)])
+            if scale == 'layer':
+                vmax = max([np.max(image_dict[(e_class,key)]) for e_class in np.arange(n_classes)])
+            if scale == 'free':
+                vmax = np.max(image_dict[(e_class,key)])
+            print("image dict type: ",type(image_dict[(e_class,key)]))
+            plot_image(100*image_dict[(e_class,key)], n_classes, e_class, layers, key, 100*vmax, soft)
+    wspace = -0.1 if n_classes == 2 else 0.2
+    #fig.subplots_adjust(left=0.05, top=0.95, bottom=0.05, right=0.95, hspace=0.6, wspace=wspace)
+    fig.savefig(file_name)
+
+def plot_image(image, n_classes, e_class, layers, key, vmax, soft=True):
+    class_dict = {0:'iso electron',  1:'charge flip' , 2:'photon conversion', 3:'b/c hadron',
+                  4:'light flavor ($\gamma$/e$^\pm$)', 5:'light flavor (hadron)'}
+    layer_dict = {'em_barrel_Lr0'     :'presampler'            , 'em_barrel_Lr1'  :'EM cal $1^{st}$ layer' ,
+                  'em_barrel_Lr1_fine':'EM cal $1^{st}$ layer' , 'em_barrel_Lr2'  :'EM cal $2^{nd}$ layer' ,
+                  'em_barrel_Lr3'     :'EM cal $3^{rd}$ layer' , 'tile_barrel_Lr1':'had cal $1^{st}$ layer',
+                  'tile_barrel_Lr2'   :'had cal $2^{nd}$ layer', 'tile_barrel_Lr3':'had cal $3^{rd}$ layer'}
+    if n_classes == 2: class_dict[1] = 'background'
+    e_layer  = layers.index(key)
+    n_layers = len(layers)
+    plot_idx = n_classes*e_layer + e_class+1
+    #plt.subplot(n_layers, n_classes, plot_idx)
+    #title   = class_dict[e_class]+'\n('+layer_dict[key]+')'
+    #title   = layer_dict[key]+'\n('+class_dict[e_class]+')'
+    title   = class_dict[e_class]+'\n('+str(key)+')'
+    limits  = [-0.13499031, 0.1349903, -0.088, 0.088]
+    x_label = '$\phi$'                             if e_layer == n_layers-1 else ''
+    x_ticks = [limits[0],-0.05,0.05,limits[1]]     if e_layer == n_layers-1 else []
+    y_label = '$\eta$'                             if e_class == 0          else ''
+    y_ticks = [limits[2],-0.05,0.0,0.05,limits[3]] if e_class == 0          else []
+    plt.title(title,fontweight='normal', fontsize=12)
+    plt.xlabel(x_label,fontsize=15); plt.xticks(x_ticks)
+    plt.ylabel(y_label,fontsize=15); plt.yticks(y_ticks)
+    plt.imshow(np.float32(image), cmap='Reds', interpolation='bilinear' if soft else None,
+               extent=limits, vmax=1 if np.max(image)==0 else vmax) #norm=colors.LogNorm(1e-3,vmax))
+    plt.colorbar(pad=0.02)
 
 # VERIFYING ARGUMENTS
 for key in ['n_train', 'n_eval', 'n_valid', 'batch_size']: vars(args)[key] = int(vars(args)[key])
@@ -185,91 +261,8 @@ inputs = {'scalars':scalars, 'images':images, 'others':others} if args.generator
 #           args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
 jf17_sample, jf17_labels, _ = merge_samples(data_files[1:], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
-sample_analysis(jf17_sample, jf17_labels, scalars, scaler, args.output_dir + '/jf17_images', args.eta_region)
+mean_images(jf17_sample, jf17_labels, scalars, scaler, args.output_dir, 'jf17', args.pt_region, args.eta_region)
 data17_sample, data17_labels, _ = merge_samples(data_files[:1], args.n_valid, inputs, args.n_tracks, args.n_classes,
            args.valid_cuts, None if args.generator=='ON' else scaler, None if args.generator=='ON' else t_scaler)
 print("data17_labels",data17_labels)
-sample_analysis(data17_sample, data17_labels, scalars, scaler, args.output_dir+'/data17_images', args.eta_region); sys.exit() 
-
-
-# EVALUATING FEATURES CORRELATIONS
-if args.correlations == 'ON':
-    from importance import correlations
-    correlations(images, scalars, valid_sample, valid_labels, args.eta_region, args.output_dir, args.images)
-
-
-# TRAINING LOOP
-if args.n_epochs > 0:
-    for path in list(accumulate([folder+'/' for folder in args.output_dir.split('/')])):
-        try: os.mkdir(path)
-        except FileExistsError: pass
-    print(  'Train sample:'   , format(np.diff(args.n_train)[0], '9.0f'), 'e')
-    print(  'Valid sample:'   , format(np.diff(args.n_valid)[0], '9.0f'), 'e')
-    print('\nUsing TensorFlow', tf.__version__                               )
-    print(  'Using'           , n_gpus, 'GPU(s)'                             )
-    print(  'Using'           , args.NN_type, 'architecture with', end=' '   )
-    print([key for key in train_data if train_data[key] != []], '\n'         )
-    print('LOADING', np.diff(args.n_train)[0], 'TRAINING SAMPLES'            )
-    train_sample, train_labels, weight_idx = merge_samples(data_files, args.n_train, inputs, args.n_tracks,
-                                                           args.n_classes, args.train_cuts, scaler=None)
-    if args.scaling:
-        if not os.path.isfile(args.scaler_in):
-            scaler = fit_scaler(train_sample, scalars, args.scaler_out)
-            if args.generator != 'ON': valid_sample = apply_scaler(valid_sample, scalars, scaler, verbose='OFF')
-        if args.generator != 'ON': train_sample = apply_scaler(train_sample, scalars, scaler, verbose='ON')
-
-    if args.t_scaling:
-        if not os.path.isfile(args.t_scaler_in):
-            t_scaler = fit_t_scaler(train_sample, args.t_scaler_out)
-            if args.generator != 'ON': valid_sample = apply_t_scaler(valid_sample, t_scaler, verbose='OFF')
-        if args.generator != 'ON': train_sample = apply_t_scaler(train_sample, t_scaler, verbose='ON')
-
-    sample_composition(train_sample); compo_matrix(valid_labels, train_labels=train_labels); print()
-    train_weights, bins = get_sample_weights(train_sample, train_labels, args.weight_type, args.bkg_ratio, hist='pt')
-    sample_histograms(valid_sample, valid_labels, train_sample, train_labels, train_weights, bins, args.output_dir)
-    #sys.exit()
-    callbacks = callback(args.model_out, args.patience, args.metrics)
-    if args.generator == 'ON':
-        del(train_sample)
-        if np.all(train_weights) != None: train_weights = gen_weights(args.n_train, weight_idx, train_weights)
-        print('\nLAUNCHING GENERATOR FOR', np.diff(args.n_train)[0], 'TRAINING SAMPLES')
-        eval_gen  = Batch_Generator(data_files, args.n_eval, input_data, args.n_tracks, args.n_classes,
-                                    valid_batch_size, args.valid_cuts, scaler, t_scaler, shuffle='OFF')
-        train_gen = Batch_Generator(data_files, args.n_train, input_data, args.n_tracks, args.n_classes,
-                                    train_batch_size, args.train_cuts, scaler, t_scaler, train_weights, shuffle='ON')
-        training  = model.fit( train_gen, validation_data=eval_gen, max_queue_size=100*max(1,n_gpus),
-                               callbacks=callbacks, workers=1, epochs=args.n_epochs, verbose=args.verbose )
-    else:
-        eval_sample = {key:valid_sample[key][:args.n_eval[1]-args.n_valid[0]] for key in valid_sample}
-        eval_labels =      valid_labels     [:args.n_eval[1]-args.n_valid[0]]
-        training    = model.fit( train_sample, train_labels, validation_data=(eval_sample,eval_labels),
-                                 callbacks=callbacks, sample_weight=train_weights, batch_size=train_batch_size,
-                                 epochs=args.n_epochs, verbose=args.verbose )
-    model.load_weights(args.model_out); print()
-else: train_labels = []; training = None
-
-
-# RESULTS AND PLOTTING SECTION
-if args.n_folds > 1:
-    valid_probs = cross_valid(valid_sample, valid_labels, scalars, args.output_dir, args.n_folds, data_files,
-                              args.n_valid, input_data, args.n_tracks, args.valid_cuts, model, args.generator)
-else:
-    print('Validation sample', args.n_valid, 'class predictions:')
-    if args.generator == 'ON':
-        valid_gen   = Batch_Generator(data_files, args.n_valid, input_data, args.n_tracks, args.n_classes,
-                                      valid_batch_size, args.valid_cuts, scaler, t_scaler, shuffle='OFF')
-        valid_probs = model.predict(valid_gen, verbose=args.verbose)
-    else: valid_probs = model.predict(valid_sample, batch_size=valid_batch_size, verbose=args.verbose)
-bkg_rej = valid_results(valid_sample, valid_labels, valid_probs, train_labels, training,
-                        args.output_dir, args.plotting, args.sep_bkg, args.runDiffPlots)
-if '.pkl' in args.results_out:
-    if args.feature_removal == 'ON':
-        args.results_out = args.output_dir[0:args.output_dir.rfind('/')]+'/'+args.results_out.split('/')[-1]
-        try: pickle.dump({removed_feature:bkg_rej}, open(args.results_out,'ab'))
-        except IOError: print('FILE ACCESS CONFLICT FOR', removed_feature, '--> SKIPPING FILE ACCESS\n')
-        feature_ranking(args.output_dir, args.results_out, scalars, images, groups=[])
-    else:
-        if args.n_folds > 1 and False: valid_data = (np.float16(valid_probs),)
-        else: valid_data = ({key:valid_sample[key] for key in others+['eta','pt']}, valid_labels, valid_probs)
-        pickle.dump(valid_data, open(args.results_out,'wb'), protocol=4)
-    print('\nValidation results saved to:', args.results_out, '\n')
+mean_images(data17_sample, data17_labels, scalars, scaler, args.output_dir,'data17', args.pt_region, args.eta_region)
