@@ -407,7 +407,7 @@ def combine_ROC_curves(output_dir, cuts=''):
     '''
 
 
-def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', soft=True):
+def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', soft=True, suffix=''):
     import multiprocessing as mp
     def get_image(sample, labels, e_class, key, mode, image_dict):
         start_time = time.time()
@@ -428,9 +428,9 @@ def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', 
     print('PLOTTING CALORIMETER IMAGES (mode='+mode+', scale='+str(scale)+')')
     for job in processes: job.start()
     for job in processes: job.join()
-    file_name = output_dir+'/cal_images.png'
+    file_name = output_dir+'/cal_images{}.png'.format(suffix)
     print('SAVING IMAGES TO:', file_name, '\n')
-    fig = plt.figure(figsize=(7,14)) if n_classes == 2 else plt.figure(figsize=(18,14))
+    fig = plt.figure(figsize=(7,14)) if n_classes == 2 else plt.figure(figsize=(4,14))
     for e_class in np.arange(n_classes):
         if scale == 'class': vmax = max([np.max(image_dict[(e_class,key)]) for key in layers])
         for key in layers:
@@ -447,7 +447,7 @@ def cal_images(sample, labels, layers, output_dir, mode='random', scale='free', 
 
 
 def plot_image(image, n_classes, e_class, layers, key, vmax, soft=True):
-    class_dict = {0:'iso electron',  1:'charge flip' , 2:'photon conversion', 3:'b/c hadron',
+    class_dict = {0:'electrons',  1:'charge flip' , 2:'photon conversion', 3:'b/c hadron',
                   4:'light flavor ($\gamma$/e$^\pm$)', 5:'light flavor (hadron)'}
     layer_dict = {'em_barrel_Lr0'     :'presampler'            , 'em_barrel_Lr1'  :'EM cal $1^{st}$ layer' ,
                   'em_barrel_Lr1_fine':'EM cal $1^{st}$ layer' , 'em_barrel_Lr2'  :'EM cal $2^{nd}$ layer' ,

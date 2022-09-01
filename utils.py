@@ -1009,7 +1009,7 @@ def print_channels(sample, labels, col=2, reverse=True):
     print(tabulate(channels[::-1] if reverse else channels, headers=headers, tablefmt='psql')); sys.exit()
 
 
-def sample_analysis(sample, labels, scalars, scaler_file, output_dir):
+def sample_analysis(sample, labels, scalars, scaler_file, output_dir, pt='', eta='', name=''):
     #for key in sample: print(key, sample[key].shape); sys.exit()
     #verify_sample(sample); sys.exit()
     #sample_histograms(sample, labels, sample, labels, None, output_dir)#; sys.exit()
@@ -1026,7 +1026,8 @@ def sample_analysis(sample, labels, scalars, scaler_file, output_dir):
                #'em_endcap_Lr0',   'em_endcap_Lr1',   'em_endcap_Lr2',   'em_endcap_Lr3',
                #'lar_endcap_Lr0',  'lar_endcap_Lr1',  'lar_endcap_Lr2',  'lar_endcap_Lr3',
                                  'tile_barrel_Lr1', 'tile_barrel_Lr2', 'tile_barrel_Lr3']
-    cal_images(sample, labels, layers, output_dir, mode='mean', soft=True)
+    suffix = "_{}_{}_eta_{}_pt".format(name, eta, pt)
+    cal_images(sample, labels, layers, output_dir, mode='mean', soft=True, suffix = suffix)
     # TRACKS DISTRIBUTIONS
     #from plots_DG import plot_tracks
     #arguments = [(sample['tracks'], labels, key,) for key in ['efrac','deta','dphi','d0','z0']]
