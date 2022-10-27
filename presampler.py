@@ -33,7 +33,7 @@ data_path  = args.data_path
 #if args.eta_region != '': data_path += '/'+args.eta_region
 #else                    : sys.exit()
 if not os.path.isdir(data_path+'/'+'output'): os.mkdir(data_path+'/'+'output')
-output_dir = data_path+'/'+'output'
+output_dir = data_path#+'/'+'output'
 data_files = [data_path+'/'+h5_file for h5_file in os.listdir(data_path) if '.h5' in h5_file]
 data_files = sorted(data_files)[0:max(1,args.n_files) if args.n_files != None else len(data_files)]
 
@@ -42,7 +42,7 @@ print("Input files: ", data_files)
 
 # MERGING FILES / NO PRESAMPLING
 if args.sampling == 'OFF':
-    if args.merging == 'ON': print(); merge_presamples(output_dir, args.output_file)
+    if args.merging == 'ON': print("\nMerging started"); merge_presamples(output_dir, args.output_file)
     sys.exit()
 
 
@@ -73,6 +73,7 @@ integers = ['p_truthType'     , 'p_TruthType'     , 'p_iffTruth'      , 'p_nTrac
             'p_LHLooseBL'     , 'p_LHVeryLoose'   , 'p_truthOrigin'   , 'p_TruthOrigin'    ,
             'p_vertexIndex'   , 'p_numberOfSCTHits', 'p_numberOfPixelHits', 'p_numberOfInnermostPixelHits',
             'p_firstEgMotherTruthType', 'p_firstEgMotherTruthOrigin', 'p_firstEgMotherPdgId'              ]
+scalars += [ 'p_passWVeto', 'p_passZVeto', 'p_passPreselection', 'p_met', 'p_mTransW', "p_trigMatches_pTbin"]
 
 
 # REMOVING TEMPORARY FILES (if any)

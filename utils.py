@@ -1159,11 +1159,12 @@ def get_truth_m(sample, new=True, m_e=0.511, max_eta=4.9):
 
 
 def merge_presamples(output_dir, output_file):
-    h5_files = [h5_file for h5_file in os.listdir(output_dir) if 'e-ID_' in h5_file and '.h5' in h5_file]
+    h5_files = [h5_file for h5_file in os.listdir(output_dir) if '.h5' in h5_file]
+    print(h5_files)
     if len(h5_files) == 0: sys.exit()
     np.random.seed(0); np.random.shuffle(h5_files)
     idx = np.cumsum([len(h5py.File(output_dir+'/'+h5_file, 'r')['eventNumber']) for h5_file in h5_files])
-    os.rename(output_dir+'/'+h5_files[0], output_dir+'/'+output_file)
+    os.popen(f"cp {output_dir+'/'+h5_files[0]} {output_dir+'/'+output_file}")
     dataset = h5py.File(output_dir+'/'+output_file, 'a')
     GB_size = len(h5_files)*sum([np.float16(dataset[key]).nbytes for key in dataset])/(1024)**2/1e3
     print('MERGING DATA FILES (', '\b{:.1f}'.format(GB_size),'GB) IN:', end=' ')
