@@ -8,9 +8,9 @@
 #SBATCH --nodes=1               #number of nodes
 ##SBATCH --mem=128G              #memory per node (on Beluga)
 #SBATCH --cpus-per-task=4       #number of CPU threads per node
-#SBATCH --gres=gpu:2            #number of GPU(s) per node
-#SBATCH --job-name=e-ID
-#SBATCH --output=log_files/%x_%A_%a.out
+#SBATCH --gres=gpu:1            #number of GPU(s) per node
+#SBATCH --job-name=e-ID_CNN
+#SBATCH --output=%x_%A_%a.out
 #SBATCH --array=0
 #---------------------------------------------------------------------
 
@@ -26,8 +26,8 @@ echo Processing job $SLURM_JOB_ID
 date 
 
 export SBATCH_VAR=$SLURM_ARRAY_TASK_ID
-export HOST_NAME=$SLURM_SUBMIT_HOST
-export NODE_DIR=$SLURM_TMPDIR
+export  HOST_NAME=$SLURM_SUBMIT_HOST
+export   NODE_DIR=$SLURM_TMPDIR
 export SCRIPT_VAR
 
 if [[ $HOST_NAME == *atlas* ]]

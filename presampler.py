@@ -17,23 +17,24 @@ parser.add_argument( '--sampling'   , default = 'ON'              )
 parser.add_argument( '--merging'    , default = 'OFF'             )
 parser.add_argument( '--mixing'     , default = 'OFF'             )
 parser.add_argument( '--eta_region' , default = ''                )
-parser.add_argument( '--data_path'  , default = "../hdf5/Data/electron/Allyear")
+parser.add_argument( '--indir'      , default = '/home/zp/denis/root2hdf5/outputs/discrepancy_test/MC/electron/myTag', type=str)
 args = parser.parse_args()
 
 
 # PRESAMPLES MIXING
 if args.mixing == 'ON':
-    #mix_datafiles()
+    #mix_datafiles() #run before mix_presamples
     mix_presamples(n_files=20, n_tasks=5, output_dir='/nvme1/atlas/godin/e-ID_data/0.0-2.5')
     sys.exit()
 
 
 # DATASET
-data_path  = args.data_path
+data_path  = args.indir
 #if args.eta_region != '': data_path += '/'+args.eta_region
 #else                    : sys.exit()
 if not os.path.isdir(data_path+'/'+'output'): os.mkdir(data_path+'/'+'output')
-output_dir = data_path#+'/'+'output'
+output_dir = data_path+'/'+'output'
+print(os.listdir(data_path))
 data_files = [data_path+'/'+h5_file for h5_file in os.listdir(data_path) if '.h5' in h5_file]
 data_files = sorted(data_files)[0:max(1,args.n_files) if args.n_files != None else len(data_files)]
 
@@ -41,8 +42,8 @@ print("Input path : ", data_path)
 print("Input files: ", data_files)
 
 # MERGING FILES / NO PRESAMPLING
-if args.sampling == 'OFF':
-    if args.merging == 'ON': print("\nMerging started"); merge_presamples(output_dir, args.output_file)
+if args.sampling == 'OFF' and args.merging == 'ON':
+    print(); merge_presamples(output_dir, args.output_file)
     sys.exit()
 
 
@@ -80,6 +81,20 @@ scalars += [ 'p_passWVeto', 'p_passZVeto', 'p_passPreselection', 'p_met', 'p_mTr
 h5_files = [h5_file for h5_file in os.listdir(output_dir) if 'e-ID_' in h5_file]
 for h5_file in h5_files: os.remove(output_dir+'/'+h5_file)
 
+# MODIFYING FILE STRUCTURE
+for h5_file in data_files:
+    with h5py.File(h5_file,"a") as data:
+        if 'train' not in data.keys():
+            data.create_group('train')
+            for key in data: data.move(key, 'train'+'/'+key)
+
+# MODYFING FILE STRUCTURE
+for h5_file in data_files:
+    with h5py.File(h5_file,"a") as data:
+        if 'train' not in data.keys():
+            data.create_group('train')
+            for key in data: data.move(key, 'train'+'/'+key)
+
 
 # STARTING SAMPLING AND COLLECTING DATA
 n_tasks = min(mp.cpu_count(), args.n_tasks)
@@ -96,8 +111,7 @@ for h5_file in data_files:
         print('Collecting', format(str(n_e[index]),'>7s'), 'e from:', h5_file.split('/')[-1], end=' ')
         print(format('['+file_key+']','7s'), end=' ... ', flush=True)
         func_args = (h5_file, output_dir, batch_size, sum_e, images, tracks, scalars, integers, file_key)
-        sample = pool.map(partial(presample, *func_args), np.arange(n_tasks))
-        #pool.map(partial(presample, *func_args), np.arange(n_tasks))
+        pool.map(partial(presample, *func_args), np.arange(n_tasks))
         sum_e += batch_size; index += 1
         print('(', '\b'+format(time.time() - start_time,'.1f'), '\b'+' s)')
 pool.close(); pool.join(); print()
